@@ -1,6 +1,9 @@
 package com.zero.flow.presentation.timer
 
-
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -18,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +38,16 @@ fun TimerScreen(
     viewModel: TimerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                viewModel.onEvent(TimerEvent.StartTimer(context))
+            }
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -93,10 +107,16 @@ fun TimerScreen(
             // Timer Controls
             TimerControls(
                 timerState = uiState.timerState,
-                onStartClick = { viewModel.onEvent(TimerEvent.StartTimer) },
-                onPauseClick = { viewModel.onEvent(TimerEvent.PauseTimer) },
-                onResetClick = { viewModel.onEvent(TimerEvent.ResetTimer) },
-                onSkipClick = { viewModel.onEvent(TimerEvent.SkipSession) }
+                onStartClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        viewModel.onEvent(TimerEvent.StartTimer(context))
+                    }
+                },
+                onPauseClick = { viewModel.onEvent(TimerEvent.PauseTimer(context)) },
+                onResetClick = { viewModel.onEvent(TimerEvent.ResetTimer(context)) },
+                onSkipClick = { viewModel.onEvent(TimerEvent.SkipSession(context)) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -104,7 +124,6 @@ fun TimerScreen(
             // Daily Progress
             DailyProgress(
                 completedSessions = uiState.completedSessionsCount,
-//                goalSessions = uiState.settings.dailyGoalSessions
                 goalSessions = uiState.settings.dailyGoal
             )
         }

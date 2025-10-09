@@ -1,12 +1,13 @@
 package com.zero.flow.presentation.timer
 
-
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zero.flow.domain.model.*
 import com.zero.flow.domain.repository.SessionRepository
 import com.zero.flow.domain.repository.SettingsRepository
 import com.zero.flow.domain.repository.TaskRepository
+import com.zero.flow.service.TimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,13 +16,11 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
 
-
-
 sealed class TimerEvent {
-    data object StartTimer : TimerEvent()
-    data object PauseTimer : TimerEvent()
-    data object ResetTimer : TimerEvent()
-    data object SkipSession : TimerEvent()
+    data class StartTimer(val context: Context) : TimerEvent()
+    data class PauseTimer(val context: Context) : TimerEvent()
+    data class ResetTimer(val context: Context) : TimerEvent()
+    data class SkipSession(val context: Context) : TimerEvent()
     data class SelectSessionType(val sessionType: SessionType) : TimerEvent()
     data class SelectTask(val task: Task?) : TimerEvent()
 }
@@ -63,13 +62,13 @@ class TimerViewModel @Inject constructor(
 
     fun onEvent(event: TimerEvent) {
         when (event) {
-            is TimerEvent.StartTimer -> startTimer()
-            is TimerEvent.PauseTimer -> pauseTimer()
-            is TimerEvent.ResetTimer -> resetTimer()
-            is TimerEvent.SkipSession -> skipSession()
+            is TimerEvent.StartTimer -> startTimer(event.context)
+            is TimerEvent.PauseTimer -> pauseTimer(event.context)
+            is TimerEvent.ResetTimer -> resetTimer(event.context)
+            is TimerEvent.SkipSession -> skipSession(event.context)
             is TimerEvent.SelectSessionType -> {
                 selectedSessionType = event.sessionType
-                resetTimer()
+                resetTimer(null)
             }
             is TimerEvent.SelectTask -> {
                 _uiState.update { it.copy(currentTask = event.task) }
@@ -77,17 +76,18 @@ class TimerViewModel @Inject constructor(
         }
     }
 
-    private fun startTimer() {
+    private fun startTimer(context: Context) {
         val currentState = _uiState.value.timerState
 
         when (currentState) {
             is TimerState.Idle -> {
                 sessionStartTime = LocalDateTime.now()
                 val duration = getSessionDuration(selectedSessionType)
-                startCountdown(selectedSessionType, duration, _uiState.value.currentTask)
+                startCountdown(context, selectedSessionType, duration, _uiState.value.currentTask)
             }
             is TimerState.Paused -> {
                 startCountdown(
+                    context,
                     currentState.sessionType,
                     currentState.remainingTimeMs,
                     currentState.currentTask
@@ -97,7 +97,7 @@ class TimerViewModel @Inject constructor(
         }
     }
 
-    private fun pauseTimer() {
+    private fun pauseTimer(context: Context) {
         timerJob?.cancel()
         val currentState = _uiState.value.timerState
 
@@ -112,22 +112,25 @@ class TimerViewModel @Inject constructor(
                     )
                 )
             }
+            TimerService.pauseTimer(context)
         }
     }
 
-    private fun resetTimer() {
+    private fun resetTimer(context: Context?) {
         timerJob?.cancel()
         sessionStartTime = null
         _uiState.update { it.copy(timerState = TimerState.Idle) }
+        context?.let { TimerService.stopTimer(it) }
     }
 
-    private fun skipSession() {
+    private fun skipSession(context: Context) {
         timerJob?.cancel()
-        completeSession(false)
-        resetTimer()
+        completeSession(context, false)
+        resetTimer(context)
     }
 
     private fun startCountdown(
+        context: Context,
         sessionType: SessionType,
         durationMs: Long,
         task: Task?
@@ -151,6 +154,8 @@ class TimerViewModel @Inject constructor(
             )
         }
 
+        TimerService.startTimer(context, sessionType, durationMs, totalDuration)
+
         timerJob = viewModelScope.launch {
             var remaining = durationMs
 
@@ -170,17 +175,17 @@ class TimerViewModel @Inject constructor(
                 }
             }
 
-            completeSession(true)
+            completeSession(context, true)
             _uiState.update {
                 it.copy(timerState = TimerState.Completed(sessionType))
             }
 
             delay(3000) // Show completed state for 3 seconds
-            handleSessionCompletion(sessionType)
+            handleSessionCompletion(context, sessionType)
         }
     }
 
-    private fun completeSession(completed: Boolean) {
+    private fun completeSession(context: Context, completed: Boolean) {
         val currentState = _uiState.value.timerState
 
         if (currentState is TimerState.Running && completed) {
@@ -203,11 +208,13 @@ class TimerViewModel @Inject constructor(
                     }
                     loadTodaySessions()
                 }
+
+                TimerService.completeSession(context, currentState.sessionType)
             }
         }
     }
 
-    private fun handleSessionCompletion(completedType: SessionType) {
+    private fun handleSessionCompletion(context: Context, completedType: SessionType) {
         val settings = _uiState.value.settings
 
         val nextType = when (completedType) {
@@ -227,20 +234,17 @@ class TimerViewModel @Inject constructor(
         }
 
         if (autoStart) {
-            startTimer()
+            startTimer(context)
         } else {
-            resetTimer()
+            resetTimer(context)
         }
     }
 
     private fun getSessionDuration(sessionType: SessionType): Long {
         val settings = _uiState.value.settings
         val minutes = when (sessionType) {
-//            SessionType.FOCUS -> settings.focusDurationMinutes
             SessionType.FOCUS -> settings.focusDuration
-//            SessionType.SHORT_BREAK -> settings.shortBreakDurationMinutes
             SessionType.SHORT_BREAK -> settings.shortBreakDuration
-//            SessionType.LONG_BREAK -> settings.longBreakDurationMinutes
             SessionType.LONG_BREAK -> settings.longBreakDuration
         }
         return minutes * 60 * 1000L
