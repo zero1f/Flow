@@ -1,6 +1,5 @@
 package com.zero.flow.presentation.navigation
 
-
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,8 +8,6 @@ import com.zero.flow.presentation.settings.SettingsScreen
 import com.zero.flow.presentation.statistics.StatisticsScreen
 import com.zero.flow.presentation.tasks.TasksScreen
 import com.zero.flow.presentation.timer.TimerScreen
-
-
 
 @Composable
 fun NavGraph() {
