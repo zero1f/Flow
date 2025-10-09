@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Flow" parent="Base.Theme.Flow">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>

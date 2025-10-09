@@ -1,0 +1,83 @@
+<resources>
+    <string name="app_name">Flow</string>
+
+    <!-- Timer -->
+    <string name="timer_focus">Focus</string>
+    <string name="timer_short_break">Short Break</string>
+    <string name="timer_long_break">Long Break</string>
+    <string name="timer_start">Start</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_resume">Resume</string>
+    <string name="timer_reset">Reset</string>
+    <string name="timer_skip">Skip</string>
+
+    <!-- Navigation -->
+    <string name="nav_timer">Timer</string>
+    <string name="nav_tasks">Tasks</string>
+    <string name="nav_statistics">Statistics</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Tasks -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_add">Add Task</string>
+    <string name="tasks_empty">No tasks yet</string>
+    <string name="tasks_empty_subtitle">Add a task to get started</string>
+    <string name="task_title">Task Title</string>
+    <string name="task_description">Description (optional)</string>
+    <string name="task_estimated_pomodoros">Estimated Pomodoros</string>
+    <string name="task_completed_pomodoros">%1$d / %2$d pomodoros</string>
+    <string name="task_delete">Delete Task</string>
+    <string name="task_complete">Mark Complete</string>
+
+    <!-- Statistics -->
+    <string name="stats_title">Statistics</string>
+    <string name="stats_total_sessions">Total Sessions</string>
+    <string name="stats_total_focus_time">Total Focus Time</string>
+    <string name="stats_current_streak">Current Streak</string>
+    <string name="stats_longest_streak">Longest Streak</string>
+    <string name="stats_productivity_score">Productivity Score</string>
+    <string name="stats_today">Today</string>
+    <string name="stats_this_week">This Week</string>
+    <string name="stats_this_month">This Month</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_timer_duration">Timer Duration</string>
+    <string name="settings_focus_duration">Focus Duration</string>
+    <string name="settings_short_break_duration">Short Break Duration</string>
+    <string name="settings_long_break_duration">Long Break Duration</string>
+    <string name="settings_sessions_until_long_break">Sessions Until Long Break</string>
+    <string name="settings_automation">Automation</string>
+    <string name="settings_auto_start_breaks">Auto-start Breaks</string>
+    <string name="settings_auto_start_pomodoros">Auto-start Pomodoros</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_vibration">Vibration</string>
+    <string name="settings_ambient_sound">Ambient Sound</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_daily_goal">Daily Goal</string>
+
+    <!-- Notifications -->
+    <string name="notification_timer_channel_name">Timer</string>
+    <string name="notification_timer_channel_desc">Shows the current timer status</string>
+    <string name="notification_session_complete_channel_name">Session Complete</string>
+    <string name="notification_session_complete_channel_desc">Notifies when a session is complete</string>
+    <string name="notification_focus_title">Focus Session</string>
+    <string name="notification_short_break_title">Short Break</string>
+    <string name="notification_long_break_title">Long Break</string>
+    <string name="notification_session_complete_focus">Great work! Time for a break.</string>
+    <string name="notification_session_complete_break">Break over. Ready to focus?</string>
+
+    <!-- General -->
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add">Add</string>
+    <string name="action_close">Close</string>
+    <string name="minutes_short">min</string>
+    <string name="hours_short">h</string>
+    <string name="days">days</string>
+    <string name="sessions">sessions</string>
+</resources>

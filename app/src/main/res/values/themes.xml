@@ -1,0 +1,32 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Theme.Flow" parent="Base.Theme.Flow">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/flow_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/flow_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/flow_on_primary_container</item>
+
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">@color/flow_secondary</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/flow_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/flow_on_secondary_container</item>
+
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+
+        <!-- Navigation bar color -->
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+
+        <!-- Enable edge-to-edge -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
+
+        <!-- Splash Screen -->
+<!--        <item name="android:windowSplashScreenBackground">@color/flow_primary</item>-->
+    </style>
+
+    <style name="Base.Theme.Flow" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Other theme attributes -->
+    </style>
+</resources>

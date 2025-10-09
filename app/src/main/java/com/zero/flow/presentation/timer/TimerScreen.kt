@@ -1,0 +1,388 @@
+package com.zero.flow.presentation.timer
+
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zero.flow.domain.model.SessionType
+import com.zero.flow.domain.model.TimerState
+
+@Composable
+fun TimerScreen(
+    onNavigateToTasks: () -> Unit,
+    onNavigateToStatistics: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    viewModel: TimerViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Scaffold(
+        topBar = {
+            TimerTopBar(
+                onTasksClick = onNavigateToTasks,
+                onStatisticsClick = onNavigateToStatistics,
+                onSettingsClick = onNavigateToSettings
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Session Type Selector
+            SessionTypeSelector(
+                selectedType = when (val state = uiState.timerState) {
+                    is TimerState.Running -> state.sessionType
+                    is TimerState.Paused -> state.sessionType
+                    is TimerState.Completed -> state.sessionType
+                    is TimerState.Idle -> SessionType.FOCUS
+                },
+                onTypeSelected = { type ->
+                    viewModel.onEvent(TimerEvent.SelectSessionType(type))
+                },
+                enabled = uiState.timerState is TimerState.Idle
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Current Task Display
+            uiState.currentTask?.let { task ->
+                TaskCard(
+                    taskName = task.title,
+                    completedPomodoros = task.completedPomodoros,
+                    estimatedPomodoros = task.estimatedPomodoros,
+                    onClearTask = {
+                        viewModel.onEvent(TimerEvent.SelectTask(null))
+                    }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Circular Timer
+            CircularTimer(
+                timerState = uiState.timerState,
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Timer Controls
+            TimerControls(
+                timerState = uiState.timerState,
+                onStartClick = { viewModel.onEvent(TimerEvent.StartTimer) },
+                onPauseClick = { viewModel.onEvent(TimerEvent.PauseTimer) },
+                onResetClick = { viewModel.onEvent(TimerEvent.ResetTimer) },
+                onSkipClick = { viewModel.onEvent(TimerEvent.SkipSession) }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Daily Progress
+            DailyProgress(
+                completedSessions = uiState.completedSessionsCount,
+//                goalSessions = uiState.settings.dailyGoalSessions
+                goalSessions = uiState.settings.dailyGoal
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimerTopBar(
+    onTasksClick: () -> Unit,
+    onStatisticsClick: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                "Flow",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        actions = {
+            IconButton(onClick = onTasksClick) {
+                Icon(Icons.Default.CheckCircle, contentDescription = "Tasks")
+            }
+            IconButton(onClick = onStatisticsClick) {
+                Icon(Icons.Default.BarChart, contentDescription = "Statistics")
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SessionTypeSelector(
+    selectedType: SessionType,
+    onTypeSelected: (SessionType) -> Unit,
+    enabled: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        SessionTypeChip(
+            label = "Focus",
+            isSelected = selectedType == SessionType.FOCUS,
+            onClick = { onTypeSelected(SessionType.FOCUS) },
+            enabled = enabled
+        )
+        SessionTypeChip(
+            label = "Short Break",
+            isSelected = selectedType == SessionType.SHORT_BREAK,
+            onClick = { onTypeSelected(SessionType.SHORT_BREAK) },
+            enabled = enabled
+        )
+        SessionTypeChip(
+            label = "Long Break",
+            isSelected = selectedType == SessionType.LONG_BREAK,
+            onClick = { onTypeSelected(SessionType.LONG_BREAK) },
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun SessionTypeChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.clip(CircleShape),
+        color = if (isSelected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+@Composable
+private fun CircularTimer(
+    timerState: TimerState,
+    modifier: Modifier = Modifier
+) {
+    val progress = remember(timerState) {
+        when (timerState) {
+            is TimerState.Running -> timerState.remainingTimeMs.toFloat() / timerState.totalTimeMs
+            is TimerState.Paused -> timerState.remainingTimeMs.toFloat() / timerState.totalTimeMs
+            is TimerState.Completed -> 0f
+            is TimerState.Idle -> 1f
+        }
+    }
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 300),
+        label = "timer_progress"
+    )
+
+    val timeText = remember(timerState) {
+        when (timerState) {
+            is TimerState.Running -> formatTime(timerState.remainingTimeMs)
+            is TimerState.Paused -> formatTime(timerState.remainingTimeMs)
+            is TimerState.Completed -> "00:00"
+            is TimerState.Idle -> "00:00"
+        }
+    }
+
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 24.dp.toPx()
+            val radius = (size.minDimension - strokeWidth) / 2
+
+            // Background circle
+            drawCircle(
+                color = Color.LightGray.copy(alpha = 0.2f),
+                radius = radius,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // Progress arc
+            val sweepAngle = 360f * animatedProgress
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        Color(0xFF667EEA),
+                        Color(0xFF764BA2)
+                    )
+                ),
+                startAngle = -90f,
+                sweepAngle = -sweepAngle,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                size = Size(radius * 2, radius * 2),
+                topLeft = Offset(
+                    (size.width - radius * 2) / 2,
+                    (size.height - radius * 2) / 2
+                )
+            )
+        }
+
+        Text(
+            text = timeText,
+            style = MaterialTheme.typography.displayLarge.copy(
+                fontSize = 72.sp,
+                fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@Composable
+private fun TimerControls(
+    timerState: TimerState,
+    onStartClick: () -> Unit,
+    onPauseClick: () -> Unit,
+    onResetClick: () -> Unit,
+    onSkipClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Reset/Skip button
+        if (timerState !is TimerState.Idle) {
+            IconButton(
+                onClick = if (timerState is TimerState.Running) onSkipClick else onResetClick,
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = if (timerState is TimerState.Running)
+                        Icons.Default.SkipNext else Icons.Default.Refresh,
+                    contentDescription = if (timerState is TimerState.Running) "Skip" else "Reset",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.size(56.dp))
+        }
+
+        // Main action button
+        FilledTonalButton(
+            onClick = if (timerState is TimerState.Running) onPauseClick else onStartClick,
+            modifier = Modifier.size(80.dp),
+            shape = CircleShape
+        ) {
+            Icon(
+                imageVector = if (timerState is TimerState.Running)
+                    Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (timerState is TimerState.Running) "Pause" else "Start",
+                modifier = Modifier.size(40.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.size(56.dp))
+    }
+}
+
+@Composable
+private fun TaskCard(
+    taskName: String,
+    completedPomodoros: Int,
+    estimatedPomodoros: Int,
+    onClearTask: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = taskName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "$completedPomodoros / $estimatedPomodoros pomodoros",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onClearTask) {
+                Icon(Icons.Default.Close, contentDescription = "Clear task")
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyProgress(
+    completedSessions: Int,
+    goalSessions: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Today: $completedSessions / $goalSessions sessions",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LinearProgressIndicator(
+            progress = { (completedSessions.toFloat() / goalSessions).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape)
+        )
+    }
+}
+
+private fun formatTime(milliseconds: Long): String {
+    val totalSeconds = milliseconds / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%02d:%02d", minutes, seconds)
+}

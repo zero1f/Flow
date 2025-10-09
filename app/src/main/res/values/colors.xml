@@ -1,0 +1,35 @@
+<resources>
+    <!-- Material3 Colors -->
+    <color name="purple_80">#FFD0BCFF</color>
+    <color name="purple_grey_80">#FFCCC2DC</color>
+    <color name="pink_80">#FFEFB8C8</color>
+
+    <color name="purple_40">#FF6650a4</color>
+    <color name="purple_grey_40">#FF625b71</color>
+    <color name="pink_40">#FF7D5260</color>
+
+    <!-- Brand Colors -->
+    <color name="flow_primary">#FF667EEA</color>
+    <color name="flow_secondary">#FF764BA2</color>
+    <color name="flow_tertiary">#FFf093fb</color>
+    <color name="flow_primary_container">#FFE8EAFF</color>
+    <color name="flow_on_primary_container">#FF1A1B4B</color>
+    <color name="flow_secondary_container">#FFFFD8E4</color>
+    <color name="flow_on_secondary_container">#FF31111D</color>
+
+    <!-- Basic Colors -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <!-- Task Colors -->
+    <color name="task_indigo">#FF667EEA</color>
+    <color name="task_purple">#FF764BA2</color>
+    <color name="task_pink">#FFf093fb</color>
+    <color name="task_blue">#FF4facfe</color>
+    <color name="task_cyan">#FF00f2fe</color>
+    <color name="task_green">#FF43e97b</color>
+    <color name="task_rose">#FFfa709a</color>
+    <color name="task_yellow">#FFfee140</color>
+    <color name="task_red">#FFff6b6b</color>
+    <color name="task_teal">#FF4ecdc4</color>
+</resources>
