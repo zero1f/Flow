@@ -120,7 +120,10 @@ fun TasksScreen(
     if (showAddDialog) {
         AddTaskDialog(
             onDismiss = { showAddDialog = false },
-            onTaskAdded = { showAddDialog = false }
+            onTaskAdded = {
+                showAddDialog = false
+                viewModel.addTask(it)
+            }
         )
     }
 }
@@ -167,7 +170,7 @@ private fun TaskItem(
 @Composable
 private fun AddTaskDialog(
     onDismiss: () -> Unit,
-    onTaskAdded: () -> Unit
+    onTaskAdded: (title: String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var estimatedPomodoros by remember { mutableStateOf("4") }
@@ -194,7 +197,7 @@ private fun AddTaskDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = onTaskAdded,
+                onClick = { onTaskAdded(title) },
                 enabled = title.isNotBlank()
             ) {
                 Text("Add")
@@ -207,3 +210,5 @@ private fun AddTaskDialog(
         }
     )
 }
+
+

@@ -45,25 +45,18 @@ class UserPreferencesDataStore @Inject constructor(
 
     val settings: Flow<Settings> = dataStore.data.map { preferences ->
         Settings(
-//            focusDurationMinutes = preferences[PreferencesKeys.FOCUS_DURATION] ?: 25,
             focusDuration = preferences[PreferencesKeys.FOCUS_DURATION] ?: 25,
-//            shortBreakDurationMinutes = preferences[PreferencesKeys.SHORT_BREAK_DURATION] ?: 5,
             shortBreakDuration = preferences[PreferencesKeys.SHORT_BREAK_DURATION] ?: 5,
-//            longBreakDurationMinutes = preferences[PreferencesKeys.LONG_BREAK_DURATION] ?: 15,
             longBreakDuration = preferences[PreferencesKeys.LONG_BREAK_DURATION] ?: 15,
             sessionsUntilLongBreak = preferences[PreferencesKeys.SESSIONS_UNTIL_LONG_BREAK] ?: 4,
             autoStartBreaks = preferences[PreferencesKeys.AUTO_START_BREAKS] ?: false,
             autoStartPomodoros = preferences[PreferencesKeys.AUTO_START_POMODOROS] ?: false,
             soundEnabled = preferences[PreferencesKeys.SOUND_ENABLED] ?: true,
             vibrationEnabled = preferences[PreferencesKeys.VIBRATION_ENABLED] ?: true,
-//            ambientSoundType = AmbientSoundType.valueOf(
-//                preferences[PreferencesKeys.AMBIENT_SOUND_TYPE] ?: AmbientSoundType.NONE.name
-//            ),
             ambientSound = AmbientSoundType.valueOf(
                 preferences[PreferencesKeys.AMBIENT_SOUND_TYPE] ?: AmbientSoundType.NONE.name
             ),
             ambientSoundVolume = preferences[PreferencesKeys.AMBIENT_SOUND_VOLUME] ?: 0.5f,
-//            dailyGoalSessions = preferences[PreferencesKeys.DAILY_GOAL_SESSIONS] ?: 8,
             dailyGoal = preferences[PreferencesKeys.DAILY_GOAL_SESSIONS] ?: 8,
             theme = AppTheme.valueOf(
                 preferences[PreferencesKeys.THEME] ?: AppTheme.SYSTEM.name
@@ -73,21 +66,16 @@ class UserPreferencesDataStore @Inject constructor(
 
     suspend fun updateSettings(settings: Settings) {
         dataStore.edit { preferences ->
-//            preferences[PreferencesKeys.FOCUS_DURATION] = settings.focusDurationMinutes
             preferences[PreferencesKeys.FOCUS_DURATION] = settings.focusDuration
-//            preferences[PreferencesKeys.SHORT_BREAK_DURATION] = settings.shortBreakDurationMinutes
             preferences[PreferencesKeys.SHORT_BREAK_DURATION] = settings.shortBreakDuration
-//            preferences[PreferencesKeys.LONG_BREAK_DURATION] = settings.longBreakDurationMinutes
             preferences[PreferencesKeys.LONG_BREAK_DURATION] = settings.longBreakDuration
             preferences[PreferencesKeys.SESSIONS_UNTIL_LONG_BREAK] = settings.sessionsUntilLongBreak
             preferences[PreferencesKeys.AUTO_START_BREAKS] = settings.autoStartBreaks
             preferences[PreferencesKeys.AUTO_START_POMODOROS] = settings.autoStartPomodoros
             preferences[PreferencesKeys.SOUND_ENABLED] = settings.soundEnabled
             preferences[PreferencesKeys.VIBRATION_ENABLED] = settings.vibrationEnabled
-//            preferences[PreferencesKeys.AMBIENT_SOUND_TYPE] = settings.ambientSoundType.name
             preferences[PreferencesKeys.AMBIENT_SOUND_TYPE] = settings.ambientSound.name
             preferences[PreferencesKeys.AMBIENT_SOUND_VOLUME] = settings.ambientSoundVolume
-//            preferences[PreferencesKeys.DAILY_GOAL_SESSIONS] = settings.dailyGoalSessions
             preferences[PreferencesKeys.DAILY_GOAL_SESSIONS] = settings.dailyGoal
             preferences[PreferencesKeys.THEME] = settings.theme.name
         }

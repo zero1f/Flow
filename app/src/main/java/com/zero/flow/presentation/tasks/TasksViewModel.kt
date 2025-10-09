@@ -23,6 +23,17 @@ class TasksViewModel @Inject constructor(
             emptyList()
         )
 
+    fun addTask(title: String) {
+        viewModelScope.launch {
+            taskRepository.insertTask(
+                Task(
+                    title = title,
+                    createdAt = java.time.LocalDateTime.now()
+                )
+            )
+        }
+    }
+
     fun deleteTask(taskId: Long) {
         viewModelScope.launch {
             taskRepository.deleteTask(taskId)
@@ -40,4 +51,3 @@ class TasksViewModel @Inject constructor(
         }
     }
 }
-

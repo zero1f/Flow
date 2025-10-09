@@ -3,7 +3,6 @@ package com.zero.flow.data.local.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.zero.flow.domain.model.Session
 import com.zero.flow.domain.model.SessionType
 import java.time.LocalDateTime
 
@@ -29,24 +28,4 @@ data class SessionEntity(
 
     @ColumnInfo(name = "task_id")
     val taskId: Long? = null
-)
-
-private fun SessionEntity.toDomain() = Session(
-    id = id,
-    sessionType = sessionType,
-    durationMs = durationMs,
-    startTime = startTime,
-    endTime = endTime,
-    completed = completed,
-    taskId = taskId
-)
-
-private fun Session.toEntity() = SessionEntity(
-    id = id,
-    sessionType = sessionType,
-    durationMs = durationMs,
-    startTime = startTime,
-    endTime = endTime,
-    completed = completed,
-    taskId = taskId
 )

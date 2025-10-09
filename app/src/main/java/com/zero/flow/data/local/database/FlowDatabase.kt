@@ -1,7 +1,6 @@
 package com.zero.flow.data.local.database
 
 
-//import androidx.databinding.adapters.Converters
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
