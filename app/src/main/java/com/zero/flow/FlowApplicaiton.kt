@@ -1,6 +1,7 @@
 package com.zero.flow
 
 import android.app.Application
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import androidx.core.content.getSystemService
@@ -21,7 +22,7 @@ class FlowApplication : Application() {
         val timerChannel = NotificationChannel(
             TIMER_CHANNEL_ID,
             "Timer",
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Shows the current timer status"
             setShowBadge(false)
@@ -36,6 +37,7 @@ class FlowApplication : Application() {
             description = "Notifies when a focus or break session is complete"
             enableVibration(true)
         }
+
 
         notificationManager?.createNotificationChannel(timerChannel)
         notificationManager?.createNotificationChannel(sessionChannel)

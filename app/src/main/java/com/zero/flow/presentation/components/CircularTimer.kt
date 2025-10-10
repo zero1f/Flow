@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,8 +31,7 @@ fun CircularTimer(
 ) {
     val progress = remember(timerState) {
         when (timerState) {
-            is TimerState.Running -> timerState.remainingTimeMs.toFloat() / timerState.totalTimeMs
-            is TimerState.Paused -> timerState.remainingTimeMs.toFloat() / timerState.totalTimeMs
+            is TimerState.Active -> timerState.remainingTimeMs.toFloat() / timerState.totalTimeMs
             is TimerState.Completed -> 0f
             is TimerState.Idle -> 1f
         }
@@ -45,8 +45,7 @@ fun CircularTimer(
 
     val timeText = remember(timerState) {
         when (timerState) {
-            is TimerState.Running -> formatTime(timerState.remainingTimeMs)
-            is TimerState.Paused -> formatTime(timerState.remainingTimeMs)
+            is TimerState.Active -> formatTime(timerState.remainingTimeMs)
             is TimerState.Completed -> "00:00"
             is TimerState.Idle -> "00:00"
         }
@@ -58,6 +57,10 @@ fun CircularTimer(
             is TimerState.Paused -> "Paused"
             is TimerState.Completed -> "Completed!"
             is TimerState.Idle -> "Ready"
+            // The abstract Active class doesn't need a specific branch
+            // because Running and Paused cover all its concrete implementations.
+            // Adding an else branch satisfies the compiler.
+            else -> ""
         }
     }
 
@@ -100,7 +103,7 @@ fun CircularTimer(
 
         // Timer text in center
         Box(contentAlignment = Alignment.Center) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(

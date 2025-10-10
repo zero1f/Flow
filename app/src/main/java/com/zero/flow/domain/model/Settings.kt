@@ -15,7 +15,10 @@ data class Settings(
     val ambientSound: AmbientSoundType = AmbientSoundType.NONE,
     val ambientSoundVolume: Float = 0.5f,
     val dailyGoal: Int = 8,
-    val theme: AppTheme = AppTheme.SYSTEM
+    val theme: AppTheme = AppTheme.SYSTEM,
+    val language: String = "en",
+    val autoStartNextSession: Boolean = true,
+    val longBreakInterval: Int = 4
 )
 
 enum class AmbientSoundType {

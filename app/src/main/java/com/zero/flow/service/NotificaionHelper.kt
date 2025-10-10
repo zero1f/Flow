@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.zero.flow.FlowApplication
 import com.zero.flow.R
 import com.zero.flow.domain.model.SessionType
@@ -35,7 +36,8 @@ class NotificationHelper @Inject constructor(
     fun createTimerNotification(
         sessionType: SessionType,
         remainingTime: Long,
-        totalTime: Long
+        totalTime: Long,
+        isPaused: Boolean
     ): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -52,8 +54,9 @@ class NotificationHelper @Inject constructor(
         val progress = if (totalTime > 0) {
             ((totalTime - remainingTime).toFloat() / totalTime * 100).toInt()
         } else 0
+        val elapsedTime = totalTime - remainingTime
 
-        return NotificationCompat.Builder(context, FlowApplication.TIMER_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, FlowApplication.TIMER_CHANNEL_ID)
             .setContentTitle(title)
             .setContentText("$timeText remaining")
             .setSubText("$progress% complete")
@@ -61,13 +64,22 @@ class NotificationHelper @Inject constructor(
             .setOngoing(true)
             .setContentIntent(pendingIntent)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setProgress(100, progress, false)
-            .addAction(createPauseAction())
-            .addAction(createStopAction())
-            .build()
+            .setUsesChronometer(true)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis() - elapsedTime)
+
+        if (isPaused) {
+            builder.addAction(createResumeAction())
+        } else {
+            builder.addAction(createPauseAction())
+        }
+        builder.addAction(createStopAction())
+
+        return builder.build()
     }
 
     /**
@@ -126,17 +138,23 @@ class NotificationHelper @Inject constructor(
             action = TimerService.ACTION_PAUSE_TIMER
         }
         val pausePendingIntent = PendingIntent.getService(
-            context,
-            1,
-            pauseIntent,
+            context, 1, pauseIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val icon = IconCompat.createWithResource(context, R.drawable.ic_pause)
+        return NotificationCompat.Action.Builder(icon, "Pause", pausePendingIntent).build()
+    }
 
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_timer,
-            "Pause",
-            pausePendingIntent
-        ).build()
+    private fun createResumeAction(): NotificationCompat.Action {
+        val resumeIntent = Intent(context, TimerService::class.java).apply {
+            action = TimerService.ACTION_START_TIMER
+        }
+        val resumePendingIntent = PendingIntent.getService(
+            context, 2, resumeIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val icon = IconCompat.createWithResource(context, R.drawable.ic_play)
+        return NotificationCompat.Action.Builder(icon, "Resume", resumePendingIntent).build()
     }
 
     private fun createStopAction(): NotificationCompat.Action {
@@ -144,17 +162,11 @@ class NotificationHelper @Inject constructor(
             action = TimerService.ACTION_STOP_TIMER
         }
         val stopPendingIntent = PendingIntent.getService(
-            context,
-            2,
-            stopIntent,
+            context, 3, stopIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_timer,
-            "Stop",
-            stopPendingIntent
-        ).build()
+        val icon = IconCompat.createWithResource(context, R.drawable.ic_stop)
+        return NotificationCompat.Action.Builder(icon, "Stop", stopPendingIntent).build()
     }
 
     private fun getSessionTitle(sessionType: SessionType): String {

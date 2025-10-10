@@ -1,16 +1,20 @@
 package com.zero.flow.presentation.timer
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zero.flow.domain.model.*
+import com.zero.flow.domain.model.SessionType
+import com.zero.flow.domain.model.Task
+import com.zero.flow.domain.model.TimerState
 import com.zero.flow.domain.repository.SessionRepository
 import com.zero.flow.domain.repository.SettingsRepository
-import com.zero.flow.domain.repository.TaskRepository
 import com.zero.flow.service.TimerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -20,7 +24,7 @@ sealed class TimerEvent {
     data class StartTimer(val context: Context) : TimerEvent()
     data class PauseTimer(val context: Context) : TimerEvent()
     data class ResetTimer(val context: Context) : TimerEvent()
-    data class SkipSession(val context: Context) : TimerEvent()
+    data class SkipTimer(val context: Context) : TimerEvent()
     data class SelectSessionType(val sessionType: SessionType) : TimerEvent()
     data class SelectTask(val task: Task?) : TimerEvent()
 }
@@ -29,19 +33,59 @@ sealed class TimerEvent {
 class TimerViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val settingsRepository: SettingsRepository,
-    private val taskRepository: TaskRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TimerUiState())
     val uiState: StateFlow<TimerUiState> = _uiState.asStateFlow()
 
-    private var timerJob: Job? = null
-    private var sessionStartTime: LocalDateTime? = null
-    private var selectedSessionType = SessionType.FOCUS
+    private var timerService: TimerService? = null
+    private var isServiceBound = false
+    private var serviceStateJob: Job? = null
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as TimerService.TimerBinder
+            timerService = binder.getService()
+            isServiceBound = true
+            observeServiceState()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            timerService = null
+            isServiceBound = false
+            serviceStateJob?.cancel()
+        }
+    }
 
     init {
         observeSettings()
         loadTodaySessions()
+    }
+
+    fun bindService(context: Context) {
+        if (!isServiceBound) {
+            val intent = TimerService.newIntent(context)
+            context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    fun unbindService(context: Context) {
+        if (isServiceBound) {
+            context.unbindService(serviceConnection)
+            isServiceBound = false
+        }
+    }
+
+    private fun observeServiceState() {
+        serviceStateJob?.cancel()
+        serviceStateJob = viewModelScope.launch {
+            timerService?.timerState?.collect { timerState ->
+                _uiState.update { it.copy(timerState = timerState) }
+                if (timerState is TimerState.Completed) {
+                    onSessionCompleted(timerState.sessionType)
+                }
+            }
+        }
     }
 
     private fun observeSettings() {
@@ -63,12 +107,17 @@ class TimerViewModel @Inject constructor(
     fun onEvent(event: TimerEvent) {
         when (event) {
             is TimerEvent.StartTimer -> startTimer(event.context)
-            is TimerEvent.PauseTimer -> pauseTimer(event.context)
-            is TimerEvent.ResetTimer -> resetTimer(event.context)
-            is TimerEvent.SkipSession -> skipSession(event.context)
+            is TimerEvent.PauseTimer -> sendCommandToService(event.context, TimerService.ACTION_PAUSE_TIMER)
+            is TimerEvent.ResetTimer -> {
+                sendCommandToService(event.context, TimerService.ACTION_STOP_TIMER)
+                // Manually reset cycle state on explicit reset
+                _uiState.update { it.copy(focusSessionsInCycle = 0, selectedSessionType = SessionType.FOCUS) }
+            }
+            is TimerEvent.SkipTimer -> skipTimer(event.context)
             is TimerEvent.SelectSessionType -> {
-                selectedSessionType = event.sessionType
-                resetTimer(null)
+                if (_uiState.value.timerState is TimerState.Idle) {
+                    _uiState.update { it.copy(selectedSessionType = event.sessionType) }
+                }
             }
             is TimerEvent.SelectTask -> {
                 _uiState.update { it.copy(currentTask = event.task) }
@@ -77,167 +126,52 @@ class TimerViewModel @Inject constructor(
     }
 
     private fun startTimer(context: Context) {
-        val currentState = _uiState.value.timerState
+        val sessionType = _uiState.value.selectedSessionType
+        val intent = TimerService.newIntent(context).apply {
+            action = TimerService.ACTION_START_TIMER
+            putExtra(TimerService.EXTRA_SESSION_TYPE, sessionType)
+            putExtra(TimerService.EXTRA_TOTAL_TIME, getSessionDuration(sessionType))
+        }
+        context.startService(intent)
+    }
 
-        when (currentState) {
-            is TimerState.Idle -> {
-                sessionStartTime = LocalDateTime.now()
-                val duration = getSessionDuration(selectedSessionType)
-                startCountdown(context, selectedSessionType, duration, _uiState.value.currentTask)
+    private fun skipTimer(context: Context) {
+        sendCommandToService(context, TimerService.ACTION_STOP_TIMER)
+        // Treat skip as a completed session for cycle purposes
+        onSessionCompleted(_uiState.value.selectedSessionType, autoStartNext = true)
+    }
+
+    private fun onSessionCompleted(completedType: SessionType, autoStartNext: Boolean = true) {
+        viewModelScope.launch {
+            var currentCycleCount = _uiState.value.focusSessionsInCycle
+            if (completedType == SessionType.FOCUS) {
+                currentCycleCount++
             }
-            is TimerState.Paused -> {
-                startCountdown(
-                    context,
-                    currentState.sessionType,
-                    currentState.remainingTimeMs,
-                    currentState.currentTask
-                )
+
+            val nextSessionType = if (completedType == SessionType.FOCUS && currentCycleCount >= _uiState.value.settings.longBreakInterval) {
+                _uiState.update { it.copy(focusSessionsInCycle = 0) }
+                SessionType.LONG_BREAK
+            } else if (completedType == SessionType.FOCUS) {
+                _uiState.update { it.copy(focusSessionsInCycle = currentCycleCount) }
+                SessionType.SHORT_BREAK
+            } else {
+                SessionType.FOCUS
             }
-            else -> {}
-        }
-    }
 
-    private fun pauseTimer(context: Context) {
-        timerJob?.cancel()
-        val currentState = _uiState.value.timerState
+            _uiState.update { it.copy(selectedSessionType = nextSessionType) }
 
-        if (currentState is TimerState.Running) {
-            _uiState.update {
-                it.copy(
-                    timerState = TimerState.Paused(
-                        sessionType = currentState.sessionType,
-                        remainingTimeMs = currentState.remainingTimeMs,
-                        totalTimeMs = currentState.totalTimeMs,
-                        currentTask = currentState.currentTask
-                    )
-                )
-            }
-            TimerService.pauseTimer(context)
-        }
-    }
-
-    private fun resetTimer(context: Context?) {
-        timerJob?.cancel()
-        sessionStartTime = null
-        _uiState.update { it.copy(timerState = TimerState.Idle) }
-        context?.let { TimerService.stopTimer(it) }
-    }
-
-    private fun skipSession(context: Context) {
-        timerJob?.cancel()
-        completeSession(context, false)
-        resetTimer(context)
-    }
-
-    private fun startCountdown(
-        context: Context,
-        sessionType: SessionType,
-        durationMs: Long,
-        task: Task?
-    ) {
-        val totalDuration = if (durationMs == getSessionDuration(sessionType)) {
-            durationMs
-        } else {
-            // For resumed sessions, use the original total duration
-            (_uiState.value.timerState as? TimerState.Paused)?.totalTimeMs
-                ?: getSessionDuration(sessionType)
-        }
-
-        _uiState.update {
-            it.copy(
-                timerState = TimerState.Running(
-                    sessionType = sessionType,
-                    remainingTimeMs = durationMs,
-                    totalTimeMs = totalDuration,
-                    currentTask = task
-                )
-            )
-        }
-
-        TimerService.startTimer(context, sessionType, durationMs, totalDuration)
-
-        timerJob = viewModelScope.launch {
-            var remaining = durationMs
-
-            while (remaining > 0) {
-                delay(1000)
-                remaining -= 1000
-
-                _uiState.update {
-                    it.copy(
-                        timerState = TimerState.Running(
-                            sessionType = sessionType,
-                            remainingTimeMs = remaining,
-                            totalTimeMs = totalDuration,
-                            currentTask = task
-                        )
-                    )
+            if (autoStartNext && _uiState.value.settings.autoStartNextSession) {
+                // Use the application context from the service to avoid issues with Activity context
+                timerService?.let { service ->
+                    startTimer(service.applicationContext)
                 }
             }
-
-            completeSession(context, true)
-            _uiState.update {
-                it.copy(timerState = TimerState.Completed(sessionType))
-            }
-
-            delay(3000) // Show completed state for 3 seconds
-            handleSessionCompletion(context, sessionType)
         }
     }
 
-    private fun completeSession(context: Context, completed: Boolean) {
-        val currentState = _uiState.value.timerState
-
-        if (currentState is TimerState.Running && completed) {
-            viewModelScope.launch {
-                val session = Session(
-                    sessionType = currentState.sessionType,
-                    durationMs = currentState.totalTimeMs,
-                    startTime = sessionStartTime ?: LocalDateTime.now(),
-                    endTime = LocalDateTime.now(),
-                    completed = true,
-                    taskId = currentState.currentTask?.id
-                )
-
-                sessionRepository.insertSession(session)
-
-                // Increment task pomodoros if it's a focus session
-                if (currentState.sessionType == SessionType.FOCUS) {
-                    currentState.currentTask?.let { task ->
-                        taskRepository.incrementTaskPomodoros(task.id)
-                    }
-                    loadTodaySessions()
-                }
-
-                TimerService.completeSession(context, currentState.sessionType)
-            }
-        }
-    }
-
-    private fun handleSessionCompletion(context: Context, completedType: SessionType) {
-        val settings = _uiState.value.settings
-
-        val nextType = when (completedType) {
-            SessionType.FOCUS -> {
-                val shouldLongBreak = (_uiState.value.completedSessionsCount + 1) %
-                        settings.sessionsUntilLongBreak == 0
-                if (shouldLongBreak) SessionType.LONG_BREAK else SessionType.SHORT_BREAK
-            }
-            SessionType.SHORT_BREAK, SessionType.LONG_BREAK -> SessionType.FOCUS
-        }
-
-        selectedSessionType = nextType
-
-        val autoStart = when (nextType) {
-            SessionType.FOCUS -> settings.autoStartPomodoros
-            else -> settings.autoStartBreaks
-        }
-
-        if (autoStart) {
-            startTimer(context)
-        } else {
-            resetTimer(context)
-        }
+    private fun sendCommandToService(context: Context, action: String) {
+        val intent = TimerService.newIntent(context).apply { this.action = action }
+        context.startService(intent)
     }
 
     private fun getSessionDuration(sessionType: SessionType): Long {
@@ -251,7 +185,12 @@ class TimerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        if (isServiceBound) {
+            timerService?.let {
+                it.applicationContext.unbindService(serviceConnection)
+                isServiceBound = false
+            }
+        }
         super.onCleared()
-        timerJob?.cancel()
     }
 }
