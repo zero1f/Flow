@@ -11,15 +11,6 @@ data class TimerUiState(
     val settings: Settings = Settings(),
     val currentTask: Task? = null,
     val completedSessionsCount: Int = 0,
-    val isLoading: Boolean = false,
-    val error: String? = null,
     val selectedSessionType: SessionType = SessionType.FOCUS,
-    val focusSessionsInCycle: Int = 0,
-//    val timerState: TimerState = TimerState.Idle,
-//    val selectedSessionType: SessionType = SessionType.FOCUS,
-//    val settings: Settings = Settings(),
-//    val currentTask: Task? = null,
-//    val completedSessionsCount: Int = 0,
-//    val focusSessionsInCycle: Int = 0
+    val focusSessionsInCycle: Int = 0
 )
-
