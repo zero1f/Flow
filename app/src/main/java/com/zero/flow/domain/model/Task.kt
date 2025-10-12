@@ -15,7 +15,7 @@ data class Task(
     val color: Int = 0xFF6366F1.toInt()
 )
 
-public fun TaskEntity.toDomain() = Task(
+fun TaskEntity.toDomain() = Task(
     id = id,
     title = title,
     description = description,
@@ -27,7 +27,7 @@ public fun TaskEntity.toDomain() = Task(
     color = color
 )
 
-public fun Task.toEntity() = TaskEntity(
+fun Task.toEntity() = TaskEntity(
     id = id,
     title = title,
     description = description,

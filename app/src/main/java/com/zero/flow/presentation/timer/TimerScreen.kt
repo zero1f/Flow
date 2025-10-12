@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,7 +21,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zero.flow.domain.model.SessionType
 import com.zero.flow.domain.model.TimerState
+import com.zero.flow.domain.model.TimerState.Active
 import com.zero.flow.presentation.components.CircularTimer
+import com.zero.flow.presentation.components.DailyProgress
+import com.zero.flow.presentation.utils.KeepScreenOn
 
 @Composable
 fun TimerScreen(
@@ -31,6 +35,10 @@ fun TimerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    if (uiState.timerState is TimerState.Running) {
+        KeepScreenOn()
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -57,6 +65,12 @@ fun TimerScreen(
             )
         }
     ) { paddingValues ->
+        val sessionType = when (val timerState = uiState.timerState) {
+            is Active -> timerState.sessionType
+            is TimerState.Completed -> timerState.sessionType
+            is TimerState.Idle -> uiState.selectedSessionType
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -66,7 +80,7 @@ fun TimerScreen(
         ) {
             // Session Type Selector
             SessionTypeSelector(
-                selectedType = uiState.selectedSessionType,
+                selectedType = sessionType,
                 onTypeSelected = { type ->
                     viewModel.onEvent(TimerEvent.SelectSessionType(type))
                 },
@@ -194,7 +208,7 @@ private fun SessionTypeChip(
     Surface(
         onClick = onClick,
         enabled = enabled,
-        modifier = Modifier.clip(CircleShape),
+        modifier = Modifier.clip(RoundedCornerShape(12.dp)),
         color = if (isSelected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
@@ -289,32 +303,6 @@ private fun TaskCard(
                 Icon(Icons.Default.Close, contentDescription = "Clear task")
             }
         }
-    }
-}
-
-@Composable
-private fun DailyProgress(
-    completedSessions: Int,
-    goalSessions: Int
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Today: $completedSessions / $goalSessions sessions",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        LinearProgressIndicator(
-            progress = { (completedSessions.toFloat() / goalSessions).coerceIn(0f, 1f) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(CircleShape)
-        )
     }
 }
 
