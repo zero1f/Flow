@@ -114,6 +114,9 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
 
+    // Media
+    implementation("androidx.media:media:1.7.0")
+
     // Charts (for statistics)
     implementation(libs.vico.compose)
     implementation(libs.vico.compose.m3)

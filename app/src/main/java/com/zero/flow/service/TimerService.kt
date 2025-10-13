@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import com.zero.flow.domain.model.SessionType
 import com.zero.flow.domain.model.Settings
 import com.zero.flow.domain.model.TimerState
@@ -38,6 +41,12 @@ class TimerService : Service() {
 
     private var sessionsCompleted = 0
     private lateinit var currentSettings: Settings
+    private lateinit var mediaSession: MediaSessionCompat
+
+    override fun onCreate() {
+        super.onCreate()
+        mediaSession = MediaSessionCompat(this, "FlowTimer")
+    }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
@@ -73,15 +82,17 @@ class TimerService : Service() {
         }
 
         _timerState.value = TimerState.Running(sessionType, initialTime, totalTime, null)
+        updateMediaSession(true, initialTime, sessionType)
         startForegroundService(isPaused = false)
+        mediaSession.isActive = true
 
         timerJob = serviceScope.launch {
             var remaining = initialTime
             val startTime = LocalDateTime.now()
 
             while (remaining > 0 && isActive) {
-                delay(1000)
-                remaining -= 1000
+                delay(500) // Update every 500ms for smoother progress
+                remaining -= 500
                 _timerState.value = TimerState.Running(sessionType, remaining, totalTime, null)
                 updateNotification()
             }
@@ -100,14 +111,18 @@ class TimerService : Service() {
         val state = _timerState.value
         if (state is TimerState.Running) {
             _timerState.value = TimerState.Paused(state.sessionType, state.remainingTimeMs, state.totalTimeMs, state.currentTask)
+            updateMediaSession(false, state.remainingTimeMs, state.sessionType)
             startForegroundService(isPaused = true)
+            mediaSession.isActive = false
         }
     }
 
     private fun stopTimer() {
         timerJob?.cancel()
         _timerState.value = TimerState.Idle
+        updateMediaSession(false, 0, SessionType.FOCUS) // Reset with default
         stopForeground(true)
+        mediaSession.isActive = false
         stopSelf()
     }
 
@@ -151,6 +166,26 @@ class TimerService : Service() {
         }
     }
 
+    private fun updateMediaSession(isRunning: Boolean, remainingTime: Long, sessionType: SessionType) {
+        val playbackState = if (isRunning) {
+            PlaybackStateCompat.STATE_PLAYING
+        } else {
+            PlaybackStateCompat.STATE_PAUSED
+        }
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setState(playbackState, remainingTime, 1f)
+                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_STOP)
+                .build()
+        )
+        mediaSession.setMetadata(
+            MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getSessionTitle(sessionType))
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, if(isRunning) "Running" else "Paused")
+                .build()
+        )
+    }
+
     private fun startForegroundService(isPaused: Boolean) {
         val state = _timerState.value
         if (state is TimerState.Active) {
@@ -158,7 +193,8 @@ class TimerService : Service() {
                 sessionType = state.sessionType,
                 remainingTime = state.remainingTimeMs,
                 totalTime = state.totalTimeMs,
-                isPaused = isPaused
+                isPaused = isPaused,
+                mediaSessionToken = mediaSession.sessionToken
             )
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -167,18 +203,29 @@ class TimerService : Service() {
     private fun updateNotification() {
         val state = _timerState.value
         if (state is TimerState.Running) {
+            updateMediaSession(true, state.remainingTimeMs, state.sessionType)
             val notification = notificationHelper.createTimerNotification(
                 sessionType = state.sessionType,
                 remainingTime = state.remainingTimeMs,
                 totalTime = state.totalTimeMs,
-                isPaused = false
+                isPaused = false,
+                mediaSessionToken = mediaSession.sessionToken
             )
             notificationHelper.updateNotification(NOTIFICATION_ID, notification)
         }
     }
 
+    private fun getSessionTitle(sessionType: SessionType): String {
+        return when (sessionType) {
+            SessionType.FOCUS -> "Focus Session"
+            SessionType.SHORT_BREAK -> "Short Break"
+            SessionType.LONG_BREAK -> "Long Break"
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        mediaSession.release()
         serviceScope.cancel()
     }
 

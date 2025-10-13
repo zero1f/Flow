@@ -7,10 +7,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
+//import androidx.media.session.MediaSessionCompat
+import androidx.media.app.NotificationCompat.MediaStyle
 import com.zero.flow.FlowApplication
 import com.zero.flow.R
 import com.zero.flow.domain.model.SessionType
@@ -37,7 +40,8 @@ class NotificationHelper @Inject constructor(
         sessionType: SessionType,
         remainingTime: Long,
         totalTime: Long,
-        isPaused: Boolean
+        isPaused: Boolean,
+        mediaSessionToken: MediaSessionCompat.Token
     ): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -51,15 +55,11 @@ class NotificationHelper @Inject constructor(
 
         val title = getSessionTitle(sessionType)
         val timeText = formatTime(remainingTime)
-        val progress = if (totalTime > 0) {
-            ((totalTime - remainingTime).toFloat() / totalTime * 100).toInt()
-        } else 0
-        val elapsedTime = totalTime - remainingTime
 
         val builder = NotificationCompat.Builder(context, FlowApplication.TIMER_CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText("$timeText remaining")
-            .setSubText("$progress% complete")
+            .setContentText(timeText)
+            .setSubText(if (isPaused) "Paused" else "Running")
             .setSmallIcon(R.drawable.ic_timer)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
@@ -67,10 +67,11 @@ class NotificationHelper @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setProgress(100, progress, false)
-            .setUsesChronometer(true)
-            .setShowWhen(true)
-            .setWhen(System.currentTimeMillis() - elapsedTime)
+            .setStyle(
+                MediaStyle()
+                    .setMediaSession(mediaSessionToken)
+                    .setShowActionsInCompactView(0, 1)
+            )
 
         if (isPaused) {
             builder.addAction(createResumeAction())
