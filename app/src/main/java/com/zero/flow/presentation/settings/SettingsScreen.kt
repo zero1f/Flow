@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,7 +37,7 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -79,7 +82,7 @@ fun SettingsScreen(
                 onValueChange = {
                     viewModel.onEvent(SettingsEvent.UpdateLongBreakDuration(it))
                 },
-                minValue = 5,
+                minValue = 2,
                 maxValue = 60
             )
 
@@ -195,12 +198,15 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AmbientSoundSelector(
     selectedType: AmbientSoundType,
     onTypeSelected: (AmbientSoundType) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -211,34 +217,50 @@ private fun AmbientSoundSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        AmbientSoundType.entries.forEach { type ->
-            FilterChip(
-                selected = selectedType == type,
-                onClick = { onTypeSelected(type) },
-                label = {
-                    Text(
-                        text = when (type) {
-                            AmbientSoundType.NONE -> "None"
-                            AmbientSoundType.RAIN -> "Rain"
-                            AmbientSoundType.OCEAN -> "Ocean Waves"
-                            AmbientSoundType.FOREST -> "Forest"
-                            AmbientSoundType.COFFEE_SHOP -> "Coffee Shop"
-                            AmbientSoundType.WHITE_NOISE -> "White Noise"
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = ambientSoundName(selectedType),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                AmbientSoundType.entries.forEach { type ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = ambientSoundName(type))
+                        },
+                        onClick = {
+                            onTypeSelected(type)
+                            expanded = false
                         }
                     )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeSelector(
     selectedTheme: AppTheme,
     onThemeSelected: (AppTheme) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -249,21 +271,56 @@ private fun ThemeSelector(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        AppTheme.entries.forEach { theme ->
-            FilterChip(
-                selected = selectedTheme == theme,
-                onClick = { onThemeSelected(theme) },
-                label = {
-                    Text(
-                        text = when (theme) {
-                            AppTheme.LIGHT -> "Light"
-                            AppTheme.DARK -> "Dark"
-                            AppTheme.SYSTEM -> "System Default"
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = themeName(selectedTheme),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                AppTheme.entries.forEach { theme ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = themeName(theme))
+                        },
+                        onClick = {
+                            onThemeSelected(theme)
+                            expanded = false
                         }
                     )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
+                }
+            }
         }
+    }
+}
+
+private fun ambientSoundName(type: AmbientSoundType): String {
+    return when (type) {
+        AmbientSoundType.NONE -> "None"
+        AmbientSoundType.RAIN -> "Rain"
+        AmbientSoundType.OCEAN -> "Ocean Waves"
+        AmbientSoundType.FOREST -> "Forest"
+        AmbientSoundType.COFFEE_SHOP -> "Coffee Shop"
+        AmbientSoundType.WHITE_NOISE -> "White Noise"
+    }
+}
+
+private fun themeName(theme: AppTheme): String {
+    return when (theme) {
+        AppTheme.LIGHT -> "Light"
+        AppTheme.DARK -> "Dark"
+        AppTheme.SYSTEM -> "System Default"
     }
 }

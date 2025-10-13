@@ -82,7 +82,7 @@ class TimerService : Service() {
         }
 
         _timerState.value = TimerState.Running(sessionType, initialTime, totalTime, null)
-        updateMediaSession(true, initialTime, sessionType)
+        updateMediaSession(true, initialTime, sessionType, totalTime)
         startForegroundService(isPaused = false)
         mediaSession.isActive = true
 
@@ -111,7 +111,7 @@ class TimerService : Service() {
         val state = _timerState.value
         if (state is TimerState.Running) {
             _timerState.value = TimerState.Paused(state.sessionType, state.remainingTimeMs, state.totalTimeMs, state.currentTask)
-            updateMediaSession(false, state.remainingTimeMs, state.sessionType)
+            updateMediaSession(false, state.remainingTimeMs, state.sessionType, state.totalTimeMs)
             startForegroundService(isPaused = true)
             mediaSession.isActive = false
         }
@@ -120,7 +120,7 @@ class TimerService : Service() {
     private fun stopTimer() {
         timerJob?.cancel()
         _timerState.value = TimerState.Idle
-        updateMediaSession(false, 0, SessionType.FOCUS) // Reset with default
+        updateMediaSession(false, 0, SessionType.FOCUS, 0) // Reset with default
         stopForeground(true)
         mediaSession.isActive = false
         stopSelf()
@@ -166,7 +166,7 @@ class TimerService : Service() {
         }
     }
 
-    private fun updateMediaSession(isRunning: Boolean, remainingTime: Long, sessionType: SessionType) {
+    private fun updateMediaSession(isRunning: Boolean, remainingTime: Long, sessionType: SessionType, totalTime: Long) {
         val playbackState = if (isRunning) {
             PlaybackStateCompat.STATE_PLAYING
         } else {
@@ -182,6 +182,7 @@ class TimerService : Service() {
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, getSessionTitle(sessionType))
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, if(isRunning) "Running" else "Paused")
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, totalTime)
                 .build()
         )
     }
@@ -203,7 +204,7 @@ class TimerService : Service() {
     private fun updateNotification() {
         val state = _timerState.value
         if (state is TimerState.Running) {
-            updateMediaSession(true, state.remainingTimeMs, state.sessionType)
+            updateMediaSession(true, state.remainingTimeMs, state.sessionType, state.totalTimeMs)
             val notification = notificationHelper.createTimerNotification(
                 sessionType = state.sessionType,
                 remainingTime = state.remainingTimeMs,

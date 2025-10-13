@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
-//import androidx.media.session.MediaSessionCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import com.zero.flow.FlowApplication
 import com.zero.flow.R
@@ -101,7 +100,8 @@ class NotificationHelper @Inject constructor(
      */
     fun showSessionCompleteNotification(sessionType: SessionType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ContextCompat
+                .checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             // Permission not granted, cannot show notification
             return
