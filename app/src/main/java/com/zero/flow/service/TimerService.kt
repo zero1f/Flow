@@ -3,11 +3,15 @@ package com.zero.flow.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.zero.flow.domain.model.SessionType
 import com.zero.flow.domain.model.Settings
 import com.zero.flow.domain.model.TimerState
@@ -42,10 +46,13 @@ class TimerService : Service() {
     private var sessionsCompleted = 0
     private lateinit var currentSettings: Settings
     private lateinit var mediaSession: MediaSessionCompat
+    private lateinit var ambientPlayer: ExoPlayer
 
     override fun onCreate() {
         super.onCreate()
         mediaSession = MediaSessionCompat(this, "FlowTimer")
+        ambientPlayer = ExoPlayer.Builder(this).build()
+        ambientPlayer.repeatMode = Player.REPEAT_MODE_ONE
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -85,6 +92,7 @@ class TimerService : Service() {
         updateMediaSession(true, initialTime, sessionType, totalTime)
         startForegroundService(isPaused = false)
         mediaSession.isActive = true
+        startAmbientSound()
 
         timerJob = serviceScope.launch {
             var remaining = initialTime
@@ -114,6 +122,7 @@ class TimerService : Service() {
             updateMediaSession(false, state.remainingTimeMs, state.sessionType, state.totalTimeMs)
             startForegroundService(isPaused = true)
             mediaSession.isActive = false
+            ambientPlayer.pause()
         }
     }
 
@@ -123,6 +132,7 @@ class TimerService : Service() {
         updateMediaSession(false, 0, SessionType.FOCUS, 0) // Reset with default
         stopForeground(true)
         mediaSession.isActive = false
+        stopAmbientSound()
         stopSelf()
     }
 
@@ -164,6 +174,21 @@ class TimerService : Service() {
             _timerState.value = TimerState.Completed(completedSessionType)
             stopTimer()
         }
+    }
+    
+    private fun startAmbientSound() {
+        currentSettings.ambientSound.toRawResId()?.let { rawResId ->
+            val uri = Uri.parse("android.resource://$packageName/$rawResId")
+            val mediaItem = MediaItem.fromUri(uri)
+            ambientPlayer.setMediaItem(mediaItem)
+            ambientPlayer.volume = currentSettings.ambientSoundVolume
+            ambientPlayer.prepare()
+            ambientPlayer.play()
+        }
+    }
+
+    private fun stopAmbientSound() {
+        ambientPlayer.stop()
     }
 
     private fun updateMediaSession(isRunning: Boolean, remainingTime: Long, sessionType: SessionType, totalTime: Long) {
@@ -227,6 +252,7 @@ class TimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         mediaSession.release()
+        ambientPlayer.release()
         serviceScope.cancel()
     }
 

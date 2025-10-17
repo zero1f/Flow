@@ -309,11 +309,12 @@ private fun ThemeSelector(
 private fun ambientSoundName(type: AmbientSoundType): String {
     return when (type) {
         AmbientSoundType.NONE -> "None"
+        AmbientSoundType.FIRE -> "Fire"
         AmbientSoundType.RAIN -> "Rain"
-        AmbientSoundType.OCEAN -> "Ocean Waves"
+        AmbientSoundType.WIND -> "Wind"
+        AmbientSoundType.OCEAN -> "Ocean"
         AmbientSoundType.FOREST -> "Forest"
-        AmbientSoundType.COFFEE_SHOP -> "Coffee Shop"
-        AmbientSoundType.WHITE_NOISE -> "White Noise"
+        AmbientSoundType.THUNDER -> "Thunder"
     }
 }
 

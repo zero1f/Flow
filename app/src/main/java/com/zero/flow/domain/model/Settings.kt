@@ -23,11 +23,12 @@ data class Settings(
 
 enum class AmbientSoundType {
     NONE,
+    FIRE,
     RAIN,
+    WIND,
     OCEAN,
     FOREST,
-    COFFEE_SHOP,
-    WHITE_NOISE
+    THUNDER
 }
 
 enum class AppTheme {
