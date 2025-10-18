@@ -13,7 +13,7 @@ data class Session(
     val taskId: Long? = null
 )
 
-public fun SessionEntity.toDomain() = Session(
+fun SessionEntity.toDomain() = Session(
     id = id,
     sessionType = sessionType,
     durationMs = durationMs,
@@ -23,7 +23,7 @@ public fun SessionEntity.toDomain() = Session(
     taskId = taskId
 )
 
-public fun Session.toEntity() = SessionEntity(
+fun Session.toEntity() = SessionEntity(
     id = id,
     sessionType = sessionType,
     durationMs = durationMs,

@@ -28,7 +28,9 @@ enum class AmbientSoundType {
     WIND,
     OCEAN,
     FOREST,
-    THUNDER
+    THUNDER,
+    FASTTICKING,
+    SLOWTICKING
 }
 
 enum class AppTheme {

@@ -41,7 +41,6 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE id = :sessionId")
     suspend fun getSessionById(sessionId: Long): SessionEntity?
 
-
     @Delete
     suspend fun deleteSession(session: SessionEntity)
 

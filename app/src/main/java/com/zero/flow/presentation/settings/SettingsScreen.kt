@@ -315,6 +315,8 @@ private fun ambientSoundName(type: AmbientSoundType): String {
         AmbientSoundType.OCEAN -> "Ocean"
         AmbientSoundType.FOREST -> "Forest"
         AmbientSoundType.THUNDER -> "Thunder"
+        AmbientSoundType.FASTTICKING -> "Fast Ticking"
+        AmbientSoundType.SLOWTICKING -> "Slow Ticking"
     }
 }
 
